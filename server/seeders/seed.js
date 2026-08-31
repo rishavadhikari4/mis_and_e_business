@@ -1,5 +1,8 @@
 import { User, Category, Product, Order, OrderItem, CartItem } from '../models/models.js';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import { pathToFileURL } from 'url';
 
 export const seedData = async () => {
   try {
@@ -154,5 +157,16 @@ export const seedData = async () => {
     
   } catch (error) {
     console.error('❌ Error seeding database:', error);
+    throw error;
   }
 };
+// Standalone entrypoint: `npm run seed`
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  dotenv.config();
+  await mongoose.connect(process.env.MONGODB_URI);
+  try {
+    await seedData();
+  } finally {
+    await mongoose.disconnect();
+  }
+}

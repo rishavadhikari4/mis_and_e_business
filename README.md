@@ -74,68 +74,102 @@ mern-ecommerce-app/
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
-- npm or yarn package manager
+- Node.js (v18 or higher)
+- npm
+- MongoDB running locally (`brew services start mongodb-community` on macOS)
 
 ### Installation
+
+> There is no root `package.json`. `client/` and `server/` are two separate npm
+> projects, so every command below runs inside one of those folders.
 
 1. **Clone the repository**
 
    ```bash
    git clone <repository-url>
-   cd <folders-name>
+   cd <folder-name>
    ```
 
-2. **Install dependencies**
+2. **Install dependencies** (both projects)
 
    ```bash
-   npm install
+   cd server && npm install
+   cd ../client && npm install
    ```
 
 3. **Environment Setup**
 
    ```bash
-   cp .env.example .env
+   cp server/.env.example server/.env
+   cp client/.env.example client/.env
    ```
 
-   Update the `.env` file with your configuration for client and server:
+   `server/.env`:
 
    ```env
-   PORT=5000
+   PORT=5001
    MONGODB_URI=mongodb://localhost:27017/ecommerce
    CLIENT_URL=http://localhost:3000
    NODE_ENV=development
-   JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-   KHALTI_TEST_SECRET_KEY=your-khalti-live-secret-key
+   JWT_SECRET=change-this-to-a-long-random-string
+   KHALTI_TEST_SECRET_KEY=
    ```
+
+   Generate a real secret with `openssl rand -hex 32`. Leave
+   `KHALTI_TEST_SECRET_KEY` blank unless you are testing Khalti checkout — get a
+   sandbox key from [test-admin.khalti.com](https://test-admin.khalti.com).
+   Cash on Delivery works without it.
+
+   `client/.env` (must match the server's port):
 
    ```env
-   VITE_API_URL: 'http://localhost:5000/api'
+   VITE_API_URL=http://localhost:5001/api
+   VITE_WEBSITE_URL=http://localhost:3000
    ```
 
-4. **Start the server**
+   > **Why 5001 and not 5000?** On macOS, port 5000 is taken by the AirPlay
+   > Receiver, which answers requests with `403 Forbidden` from `AirTunes`. Use
+   > 5001, or turn off AirPlay Receiver in System Settings → General → AirDrop
+   > & Handoff. Vite only reads `.env` at startup, so restart it after changes.
+
+4. **Seed the database**
 
    ```bash
-   nodemon index.js
+   cd server && npm run seed
    ```
 
-5. **Start the application**
+5. **Start the backend** (in one terminal)
+
    ```bash
-   npm run dev
+   cd server && npm run dev
+   ```
+
+6. **Start the frontend** (in a second terminal)
+
+   ```bash
+   cd client && npm run dev
    ```
 
 The application will be available at:
 
 - **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:5000
+- **Backend API**: http://localhost:5001/api
+
+Log in with `admin@gmail.com / admin123` or `user@gmail.com / user123`.
 
 ## 🔧 Available Scripts
 
-- `npm run dev` - Start frontend in development mode
-- `npm run client` - Start only the frontend development server
-- `nodemon index.js` - Start only the backend server
-- `npm run build` - Build the frontend for production
-- `npm run seed` - Seed the database with sample data
+Run from `server/`:
+
+- `npm run dev` - Start the API server
+- `npm start` - Same as `dev`
+- `npm run seed` - Reset and seed the database with sample data
+
+Run from `client/`:
+
+- `npm run dev` - Start the Vite dev server on port 3000
+- `npm run build` - Build the frontend into `client/dist`
+- `npm run preview` - Serve the production build locally
 
 ## 🖥️ Frontend Details
 
@@ -215,7 +249,7 @@ The application uses MongoDB for local development with the following main table
 
 - JWT-based authentication
 - Password hashing with bcryptjs
-- Rate limiting to prevent abuse
+- Rate limiting (`express-rate-limit` is wired up but currently commented out in `server/index.js`)
 - CORS configuration
 - Helmet for security headers
 - Input validation and sanitization
@@ -234,17 +268,17 @@ The application includes a comprehensive seeding script that populates the datab
 - **Admin User**: Email: `admin@gmail.com`, Password: `admin123`
 - **Test User**: Email: `user@gmail.com`, Password: `user123`
 
-Run the seeder with:
+Run the seeder from the `server/` folder. It **clears existing data** first:
 
 ```bash
-npm run seed
+cd server && npm run seed
 ```
 
 ## 🌐 Deployment Guide (NOTE: NOT YET DEPLOYED)
 
 ### Frontend Deployment (Vercel)
 
-1. Build the project: `npm run build`
+1. Build the project: `cd client && npm run build`
 2. Deploy the `dist` folder to Vercel
 3. Set environment variables in Vercel dashboard
 
@@ -275,10 +309,10 @@ Use tools like Postman or Insomnia to test API endpoints:
 
 ```bash
 # Example: Get products
-GET http://localhost:5000/api/products
+GET http://localhost:5001/api/products
 
 # Example: Login
-POST http://localhost:5000/api/auth/login
+POST http://localhost:5001/api/auth/login
 Content-Type: application/json
 
 {
@@ -294,15 +328,19 @@ Content-Type: application/json
 **Port already in use**
 
 ```bash
-# Kill process on port 5000
-npx kill-port 5000
+# Kill process on port 5001
+npx kill-port 5001
 ```
+
+On macOS, port 5000 is held by the AirPlay Receiver, not by a stale process —
+`kill-port` will not free it. Use a different port or disable AirPlay Receiver
+in System Settings → General → AirDrop & Handoff.
 
 **Database connection issues**
 
-- Ensure the database file has proper permissions
-- Check if the database directory exists
-- Verify environment variables are set correctly
+- Ensure MongoDB is running: `brew services list` (or `pgrep mongod`)
+- Verify `MONGODB_URI` in `server/.env` is reachable
+- The server exits on a failed connection — check its log output
 
 **CORS errors**
 
